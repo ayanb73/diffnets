@@ -137,7 +137,7 @@ def train(config):
                 train_sample.txt for parameter descriptions.
     """
     with open(config) as f:
-        job = yaml.load(f)
+        job = yaml.safe_load(f)
  
     required_keys = ['data_dir','n_epochs','act_map','lr','n_latent',
                      'hidden_layer_sizes','em_bounds','do_em','em_batch_size',

@@ -403,7 +403,7 @@ class WhitenTraj:
         # return uwm, wm
 
         # Updated implementation
-        e, v = torch.symeig(torch.from_numpy(c00).double(), eigenvectors=True)
+        e, v = torch.linalg.eigh(torch.from_numpy(c00).double())
         # In valid covariance matrix the smallest eigenvalue should be positive
         # because the covariance matrix is a positive semidefinite matrix
         # https://stats.stackexchange.com/questions/52976/is-a-sample-covariance-matrix-always-symmetric-and-positive-definite

@@ -173,8 +173,9 @@ class Trainer:
         pool = mp.Pool(processes=em_n_cores)
         res = pool.map(self.apply_exmax, inputs)
         pool.close()
-
-        train_inds = np.concatenate(np.array(train_inds))
+        
+        print([t.shape for t in train_inds])
+        train_inds = np.concatenate(train_inds)
         new_labels = -1 * np.ones((indicators.shape[0], 1))
         new_labels[train_inds] = np.concatenate(res)
         return new_labels
@@ -198,8 +199,8 @@ class Trainer:
 
         for i in range(n_vars):
             inds = np.where(indicators == i)[0]
-            lower = np.int(np.floor(em_bounds[i, 0] * inds.shape[0]))
-            upper = np.int(np.ceil(em_bounds[i, 1] * inds.shape[0]))
+            lower = int(np.floor(em_bounds[i, 0] * inds.shape[0]))
+            upper = int(np.ceil(em_bounds[i, 1] * inds.shape[0]))
             cur_labels[inds] = exmax.expectation_range_CUBIC(cur_labels[inds], lower, upper).reshape(cur_labels[inds].shape)
 
         bad_inds = np.where(np.isnan(cur_labels))
