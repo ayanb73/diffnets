@@ -405,25 +405,33 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
             f.write("hide label\n")
         count+=1
 
-    def shitty_dihedral_function(dihedral, f, top):
+    def shitty_dihedral_function(dihedral, f, top, labels):
         dih_func = getattr(md, f'compute_{dihedral}')
         inds, angles = dih_func(traj)
+        cos_angles = np.cos(angles)
+        sin_angles = np.sin(angles)
 
         c = inds.shape[0]
         print(c, f"{dihedral} dihedrals being calculated")
-        r_values = []
-        slopes = []
-        for i in np.arange(c):
-            slope, intercept, r_value, p_value, std_err = stats.linregress(labels.flatten(), angles[:,i])
-            r_values.append(r_value)
-            slopes.append(slope)
+        r2_values = []
+        
+        def cos_sin_linreg(x, a, b, c):
+            return a*x[0] + b*x[1] + c
 
-        r2_values = np.array(r_values)**2
-        corr_slopes = []
+        for i in np.arange(c):
+            xdata = np.array([cos_angles[:,i], sin_angles[:,i]])
+            popt, pcov, info_dict = scipy.optimize.curve_fit(cos_sin_linreg, xdata, labels.flatten(), full_output=True)
+            fpred = info_dict['fvec']
+            residuals = labels.flatten() - fpred 
+            ss_res = np.sum(residuals**2)
+            ss_tot = np.sum((labels.flatten() - np.mean(labels.flatten()))**2)
+            r2 = 1 - (ss_res/ss_tot)
+            r2_values.append(r2)            
+
+        r2_values = np.array(r2_values)
         count=0
         
         for j in np.argsort(r2_values)[-int(0.1*c):][::-1]:
-            corr_slopes.append(slopes[j])
             p, q, r, s = inds[j]
 
             pnum = top.top.atom(p).residue.resSeq
@@ -438,17 +446,13 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
             snum = top.top.atom(s).residue.resSeq
             sname = top.top.atom(s).name
 
-            if slopes[j] < 0:
-                f.write(f"dihedral {dihedral}_n_{j}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
-                f.write(f"color red, {dihedral}_n_{j}\n")
-                f.write("hide label\n")
-            else:
-                f.write(f"dihedral {dihedral}_p_{j}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
-                f.write(f"color blue, {dihedral}_p_{j}\n")
-                f.write("hide label\n")
+            f.write(f"dihedral {dihedral}_{j}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
+            f.write(f"color green, {dihedral}_{j}\n")
+            f.write("hide label\n")
 
-    shitty_dihedral_function('phi', f, top)
-    shitty_dihedral_function('psi', f, top)
+    shitty_dihedral_function('phi', f, top, labels)
+    shitty_dihedral_function('psi', f, top, labels)
+    shitty_dihedral_function('chi1', f, top, labels)
 
     f.close()
 
