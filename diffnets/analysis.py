@@ -387,7 +387,7 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
     count = 0
     print("Starting to write pymol file")
     f = open(os.path.join(nn_dir,out_fn), "w")
-    for i in np.argsort(r2_values)[-num2plot:]:
+    for i in np.argsort(r2_values)[-num2plot:][::-1]:
         corr_slopes.append(slopes[i])
         #print(slopes[i],r2_values[i],i)
         j,k = np.array(all_pairs)[i,:]
@@ -405,45 +405,50 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
             f.write("hide label\n")
         count+=1
 
-    chi_one_inds, chi_one_angles = md.compute_chi1(traj)
+    def shitty_dihedral_function(dihedral, f, top):
+        dih_func = getattr(md, f'compute_{dihedral}')
+        inds, angles = dih_func(traj)
 
-    c = chi_one_inds.shape[0]
-    print(c, " chi one dihedrals being calculated")
-    chi1_r_values = []
-    chi1_slopes = []
-    for i in np.arange(c):
-        slope, intercept, r_value, p_value, std_err = stats.linregress(labels.flatten(), chi_one_angles[:,i])
-        chi1_r_values.append(r_value)
-        chi1_slopes.append(slopes)
+        c = inds.shape[0]
+        print(c, f"{dihedral} dihedrals being calculated")
+        r_values = []
+        slopes = []
+        for i in np.arange(c):
+            slope, intercept, r_value, p_value, std_err = stats.linregress(labels.flatten(), angles[:,i])
+            r_values.append(r_value)
+            slopes.append(slope)
 
-    chi1_r2_values = np.array(chi1_r_values)**2
-    chi1_corr_slopes = []
-    chi1_count=0
-    
-    for j in np.argsort(chi1_r2_values)[-10:]:
-        chi1_corr_slopes.append(chi1_slopes[j])
-        p, q, r, s = chi_one_inds[c]
+        r2_values = np.array(r_values)**2
+        corr_slopes = []
+        count=0
+        
+        for j in np.argsort(r2_values)[-int(0.1*c):][::-1]:
+            corr_slopes.append(slopes[j])
+            p, q, r, s = inds[j]
 
-        pnum = top.top.atom(p).residue.resSeq
-        pname = top.top.atom(p).name
+            pnum = top.top.atom(p).residue.resSeq
+            pname = top.top.atom(p).name
 
-        qnum = top.top.atom(q).residue.resSeq
-        qname = top.top.atom(q).name
+            qnum = top.top.atom(q).residue.resSeq
+            qname = top.top.atom(q).name
 
-        rnum = top.top.atom(r).residue.resSeq
-        rname = top.top.atom(r).name
+            rnum = top.top.atom(r).residue.resSeq
+            rname = top.top.atom(r).name
 
-        snum = top.top.atom(s).residue.resSeq
-        sname = top.top.atom(s).name
+            snum = top.top.atom(s).residue.resSeq
+            sname = top.top.atom(s).name
 
-        if chi1_corr_slopes[j] < 0:
-            f.write(f"distance x1n_{j}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
-            f.write(f"color red, x1n_{j}\n")
-            f.write("hide label\n")
-        else:
-            f.write(f"distance x1p_{j}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
-            f.write(f"color blue, x1p_{j}\n")
-            f.write("hide label\n")
+            if slopes[j] < 0:
+                f.write(f"dihedral {dihedral}_n_{j}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
+                f.write(f"color red, {dihedral}_n_{j}\n")
+                f.write("hide label\n")
+            else:
+                f.write(f"dihedral {dihedral}_p_{j}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
+                f.write(f"color blue, {dihedral}_p_{j}\n")
+                f.write("hide label\n")
+
+    shitty_dihedral_function('phi', f, top)
+    shitty_dihedral_function('psi', f, top)
 
     f.close()
 
