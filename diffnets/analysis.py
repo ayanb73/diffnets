@@ -404,7 +404,50 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
             f.write("color blue, df%s\n" % count)
             f.write("hide label\n")
         count+=1
+
+    chi_one_inds, chi_one_angles = md.compute_chi1(traj)
+
+    c = chi_one_inds.shape[0]
+    print(c, " chi one dihedrals being calculated")
+    chi1_r_values = []
+    chi1_slopes = []
+    for i in np.arange(c):
+        slope, intercept, r_value, p_value, std_err = stats.linregress(labels.flatten(), chi_one_angles[:,i])
+        chi1_r_values.append(r_value)
+        chi1_slopes.append(slopes)
+
+    chi1_r2_values = np.array(chi1_r_values)**2
+    chi1_corr_slopes = []
+    chi1_count=0
+    
+    for j in np.argsort(chi1_r2_values)[-10:]:
+        chi1_corr_slopes.append(chi1_slopes[j])
+        p, q, r, s = chi_one_inds[c]
+
+        pnum = top.top.atom(p).residue.resSeq
+        pname = top.top.atom(p).name
+
+        qnum = top.top.atom(q).residue.resSeq
+        qname = top.top.atom(q).name
+
+        rnum = top.top.atom(r).residue.resSeq
+        rname = top.top.atom(r).name
+
+        snum = top.top.atom(s).residue.resSeq
+        sname = top.top.atom(s).name
+
+        if chi1_corr_slopes[j] < 0:
+            f.write(f"distance x1n_{j}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
+            f.write(f"color red, x1n_{j}\n")
+            f.write("hide label\n")
+        else:
+            f.write(f"distance x1p_{j}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
+            f.write(f"color blue, x1p_{j}\n")
+            f.write("hide label\n")
+
     f.close()
+
+
 
 #########################################################
 #                                                       #
