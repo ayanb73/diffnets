@@ -420,7 +420,7 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
 
         for i in np.arange(c):
             xdata = np.array([cos_angles[:,i], sin_angles[:,i]])
-            popt, pcov, info_dict = scipy.optimize.curve_fit(cos_sin_linreg, xdata, labels.flatten(), full_output=True)
+            popt, pcov, info_dict, mesg, ier = scipy.optimize.curve_fit(cos_sin_linreg, xdata, labels.flatten(), full_output=True)
             fpred = info_dict['fvec']
             residuals = labels.flatten() - fpred 
             ss_res = np.sum(residuals**2)
@@ -431,7 +431,7 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
         r2_values = np.array(r2_values)
         count=0
         
-        for j in np.argsort(r2_values)[-int(0.1*c):][::-1]:
+        for k,j in enumerate(np.argsort(r2_values)[-int(0.1*c):][::-1]):
             p, q, r, s = inds[j]
 
             pnum = top.top.atom(p).residue.resSeq
@@ -446,8 +446,8 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
             snum = top.top.atom(s).residue.resSeq
             sname = top.top.atom(s).name
 
-            f.write(f"dihedral {dihedral}_{j}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
-            f.write(f"color green, {dihedral}_{j}\n")
+            f.write(f"dihedral {dihedral}{k}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
+            f.write(f"color green, {dihedral}{k}\n")
             f.write("hide label\n")
 
     shitty_dihedral_function('phi', f, top, labels)
