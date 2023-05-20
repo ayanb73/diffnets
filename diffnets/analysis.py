@@ -386,6 +386,8 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
     count = 0
     print("Starting to write pymol file")
     f = open(os.path.join(nn_dir,out_fn), "w")
+    f.write('set cartoon_transparency, 0.5\n')
+    f.write('show lines\n')
     for i in np.argsort(r2_values)[-num2plot:][::-1]:
         corr_slopes.append(slopes[i])
         #print(slopes[i],r2_values[i],i)
@@ -394,6 +396,7 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
         jname = top.top.atom(j).name
         knum = top.top.atom(k).residue.resSeq
         kname = top.top.atom(k).name
+        f.write(f'# R^2: {r2_values[i]:0.4f}\n')
         if slopes[i] < 0:
             f.write("distance dc%s, master and resi %s and name %s, master and resi %s and name %s\n" % (count,jnum,jname,knum,kname))
             f.write("color red, dc%s\n" % count)
@@ -404,7 +407,7 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
             f.write("hide label\n")
         count+=1
 
-    def shitty_dihedral_function(dihedral, f, top, labels):
+    def dihedral_function(dihedral, f, traj, top, labels):
         dih_func = getattr(md, f'compute_{dihedral}')
         inds, angles = dih_func(traj)
         cos_angles = np.cos(angles)
@@ -412,6 +415,7 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
 
         c = inds.shape[0]
         print(c, f"{dihedral} dihedrals being calculated")
+        rmse_values = []
         r2_values = []
         
         def cos_sin_linreg(x, a, b, c):
@@ -419,13 +423,14 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
 
         for i in np.arange(c):
             xdata = np.array([cos_angles[:,i], sin_angles[:,i]])
-            popt, pcov, info_dict, mesg, ier = scipy.optimize.curve_fit(cos_sin_linreg, xdata, labels.flatten(), full_output=True)
-            fpred = info_dict['fvec']
-            residuals = labels.flatten() - fpred 
+            ydata = labels.flatten()
+            popt, pcov = scipy.optimize.curve_fit(cos_sin_linreg, xdata, ydata)
+            residuals = ydata - cos_sin_linreg(xdata, *popt) 
             ss_res = np.sum(residuals**2)
-            ss_tot = np.sum((labels.flatten() - np.mean(labels.flatten()))**2)
+            ss_tot = np.sum((ydata-np.mean(ydata))**2)
             r2 = 1 - (ss_res/ss_tot)
-            r2_values.append(r2)            
+            r2_values.append(r2)
+            rmse_values.append(np.sqrt(np.mean(residuals**2)))
 
         r2_values = np.array(r2_values)
         count=0
@@ -444,15 +449,38 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
 
             snum = top.top.atom(s).residue.resSeq
             sname = top.top.atom(s).name
-
+            
+            f.write(f'# R^2: {r2_values[j]:0.4f} | RMSE: {rmse_values[j]:0.4f}\n')
             f.write(f"dihedral {dihedral}-{k}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
             f.write(f"color orange, {dihedral}-{k}\n")
             f.write("hide label\n")
 
-    shitty_dihedral_function('phi', f, top, labels)
-    shitty_dihedral_function('psi', f, top, labels)
-    shitty_dihedral_function('chi1', f, top, labels)
+    dihedral_function('phi', f, traj, top, labels)
+    dihedral_function('psi', f, traj, top, labels)
+    dihedral_function('chi1', f, traj, top, labels)
 
+    def sasa_function(f, traj, top, labels):
+        areas = md.shrake_rupley(traj, probe_radius=0.28, n_sphere_points=2000, mode='atom')
+
+        print(areas.shape[1], " atom-wise SASAs being calculated")
+        r_values = []
+        slopes = []
+        for i in np.arange(areas.shape[1]):
+            slope, intercept, r_value, p_value, std_err = stats.linregress(labels.flatten(),areas[:,i])
+            r_values.append(r_value)
+            slopes.append(slope)
+
+
+        r2_values = np.array(r_values)**2
+        f.write("set sphere_scale, 0.3\n")
+        f.write("set sphere_transparency, 0.3\n")
+        for i in np.argsort(r2_values)[-50:][::-1]:
+            anum = top.top.atom(i).residue.resSeq
+            aname = top.top.atom(i).name
+            f.write(f'# R^2: {r2_values[i]:0.4f}\n')
+            f.write(f'show spheres, resi {anum} and name {aname}\n')
+    
+    sasa_function(f, traj, top, labels) 
     f.close()
 
 
