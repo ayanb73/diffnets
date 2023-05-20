@@ -73,6 +73,8 @@ def preprocess_data(sim_dirs,pdb_fns,outdir,atom_sel=None,stride=1):
         try:
             atom_sel = np.load(atom_sel)
             #Add a check to make sure atom_sel is not same
+            print(atom_sel)
+            print(var_pdb_fns)
             n_atoms = [md.load(fn).atom_slice(atom_sel[i]).n_atoms for i,fn in enumerate(var_pdb_fns)]
             if len(np.unique(n_atoms)) != 1:
                 raise ImproperlyConfigured(

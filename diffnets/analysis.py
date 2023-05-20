@@ -366,18 +366,17 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
     top = md.load(os.path.join(data_dir,"master.pdb"))
     traj = recon_traj(encs,net,top.top,cm)
     print("trajectory calculated")
-    all_pairs = list(itertools.product(inds, repeat=2))
+    all_pairs = list(itertools.combinations(inds, 2))
     distances = md.compute_distances(traj,all_pairs)
 
     labels_dir = os.path.join(nn_dir,"labels")
     labels = utils.load_npy_dir(labels_dir,"*.npy")
     labels = labels[clust_cents]
 
-    n = len(inds)
-    print(n, " distances being calculated")
+    print(distances.shape[1], " distances being calculated")
     r_values = []
     slopes = []
-    for i in np.arange(n*n):
+    for i in np.arange(distances.shape[1]):
         slope, intercept, r_value, p_value, std_err = stats.linregress(labels.flatten(),distances[:,i])
         r_values.append(r_value)
         slopes.append(slope)
@@ -446,8 +445,8 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
             snum = top.top.atom(s).residue.resSeq
             sname = top.top.atom(s).name
 
-            f.write(f"dihedral {dihedral}{k}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
-            f.write(f"color green, {dihedral}{k}\n")
+            f.write(f"dihedral {dihedral}-{k}, master and resi {pnum} and name {pname}, master and resi {qnum} and name {qname}, master and resi {rnum} and name {rname}, master and resi {snum} and name {sname}\n")
+            f.write(f"color orange, {dihedral}-{k}\n")
             f.write("hide label\n")
 
     shitty_dihedral_function('phi', f, top, labels)
