@@ -474,13 +474,15 @@ def find_features(net,data_dir,nn_dir,clust_cents,inds,out_fn,num2plot=100):
         r2_values = np.array(r_values)**2
         f.write("set sphere_scale, 0.3\n")
         f.write("set sphere_transparency, 0.3\n")
-        for i in np.argsort(r2_values)[-50:][::-1]:
+        for i in np.argsort(r2_values)[-10:][::-1]:
             anum = top.top.atom(i).residue.resSeq
             aname = top.top.atom(i).name
             f.write(f'# R^2: {r2_values[i]:0.4f}\n')
             f.write(f'show spheres, resi {anum} and name {aname}\n')
     
     sasa_function(f, traj, top, labels) 
+    f.write('group dists, dc* df*\n')
+    f.write('group dih, phi* psi* chi*\n')
     f.close()
 
 
